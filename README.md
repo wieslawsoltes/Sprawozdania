@@ -7,6 +7,10 @@
   - Pobieranie/tablice: `pobrane/Rocznik2025/` (PDF + pliki XLS/XLSX).
 - Prognozy demograficzne GUS 2023–2060 / 2023–2040: https://demografia.stat.gov.pl/BazaDemografia/Prognoza_2023_2060.aspx  
   - Pobieranie/rozpakowanie: `pobrane/GUS/` (pliki prognoz i scenariuszy, w tym powiat raciborski i miasto Racibórz).
+- Wykaz szkół i placówek oświatowych (dane.gov.pl):  
+  - Strona zbioru: https://dane.gov.pl/pl/dataset/839,wykaz-szko-iplacowek-oswiatowych  
+  - Zasób: https://dane.gov.pl/pl/dataset/839,wykaz-szko-iplacowek-oswiatowych/resource/65342  
+  - Plik lokalny: `pobrane/Wykaz_szkół_i_placówek_oświatowych_30.09.2024_.xlsx`
 
 ## Skrypty
 - `download_reports.py` – pobiera PDF-y sprawozdań finansowych 2024 dla wszystkich placówek i zapisuje w oddzielnych katalogach.
