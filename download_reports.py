@@ -9,8 +9,7 @@ from pathlib import Path
 
 BASE_URL = "https://zopo.bipraciborz.pl"
 MAIN_URL = f"{BASE_URL}/bipkod/40495541"
-DATA_DIR = Path("data")
-OUTPUT_DIR = DATA_DIR / "sprawozdania_2024"
+OUTPUT_DIR = Path("pobrane/sprawozdania_2024")
 
 
 def slugify(text: str) -> str:

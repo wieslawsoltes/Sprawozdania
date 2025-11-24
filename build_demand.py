@@ -7,10 +7,9 @@ from pptx.chart.data import CategoryChartData
 from pptx.enum.chart import XL_CHART_TYPE
 from pptx.util import Inches, Pt
 
-DATA_DIR = Path("data")
-GUS_FILE = DATA_DIR / "GUS" / "demografia_dzieci.xlsx"
-OUT_XLSX = DATA_DIR / "GUS" / "zapotrzebowanie_miejsc_2023_2060.xlsx"
-OUT_PPTX = DATA_DIR / "GUS" / "prezentacja_demografia_placowki.pptx"
+GUS_FILE = Path("raporty") / "demografia_dzieci.xlsx"
+OUT_XLSX = Path("raporty") / "zapotrzebowanie_miejsc_2023_2060.xlsx"
+OUT_PPTX = Path("raporty") / "prezentacja_demografia_placowki.pptx"
 
 
 def load_powiat():

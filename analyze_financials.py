@@ -10,10 +10,9 @@ import pdfplumber
 from docx import Document
 
 # Katalog bazowy ze sprawozdaniami
-DATA_DIR = Path("data")
-SPRAWOZDANIA_DIR = DATA_DIR / "sprawozdania_2024"
-SUMMARY_XLSX = DATA_DIR / "raport_finansowy_2024.xlsx"
-ISSUES_DOCX = DATA_DIR / "uwagi_nieprawidlowosci.docx"
+SPRAWOZDANIA_DIR = Path("pobrane/sprawozdania_2024")
+SUMMARY_XLSX = Path("raporty/raport_finansowy_2024.xlsx")
+ISSUES_DOCX = Path("raporty/uwagi_nieprawidlowosci.docx")
 
 Number = Optional[float]
 

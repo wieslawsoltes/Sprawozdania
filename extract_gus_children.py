@@ -1,9 +1,8 @@
 import pandas as pd
 from pathlib import Path
 
-DATA_DIR = Path("data")
-BASE_DIR = DATA_DIR / "GUS"
-OUTPUT_XLSX = BASE_DIR / "demografia_dzieci.xlsx"
+BASE_DIR = Path("pobrane/GUS")
+OUTPUT_XLSX = Path("raporty/demografia_dzieci.xlsx")
 
 # Ścieżki do plików źródłowych
 POWIAT_FILE = BASE_DIR / "2023_2060_4-powiaty" / "Powiaty" / "24 ÿlÑskie" / "2411 raciborski.xlsx"

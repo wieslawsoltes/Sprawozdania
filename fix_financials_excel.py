@@ -5,7 +5,7 @@ from openpyxl.chart import BarChart, Reference
 from openpyxl.chart.label import DataLabelList
 from pathlib import Path
 
-WB_PATH = Path("data/raport_finansowy_2024.xlsx")
+WB_PATH = Path("raporty/raport_finansowy_2024.xlsx")
 
 
 def format_zestawienie(ws):
