@@ -20,16 +20,18 @@
   - `Pivot_placowka` + `Wykresy` (koszty operacyjne, wynik netto, koszt/uczeń per placówka),
   - `uwagi_nieprawidlowosci.docx` (potencjalne uwagi).
 - `fix_financials_excel.py` – poprawia formuły/formaty koszt_na_ucznia w `raport_finansowy_2024.xlsx`, przebudowuje pivot per placówka i wykresy.
-- `extract_gus_children.py` – wyciąga z prognoz GUS liczebności dzieci (powiat raciborski 0–2/3–6/7–18; miasto Racibórz grupy dostępne 0–9, 10–19, 0–17) i zapisuje do `GUS/demografia_dzieci.xlsx`.
+- `extract_gus_children.py` – wyciąga z prognoz GUS liczebności dzieci (powiat raciborski 0–2/3–6/7–18; miasto Racibórz grupy dostępne 0–9, 10–19, 0–17) i zapisuje do `raporty/demografia_dzieci.xlsx`.
 - `build_demand.py` – na bazie `demografia_dzieci.xlsx` tworzy:
-  - `GUS/zapotrzebowanie_miejsc_2023_2060.xlsx` (zapotre­bowanie miejsc = 100% populacji),
-  - `GUS/prezentacja_demografia_placowki.pptx` (slajdy z wykresami i założeniami).
+  - `raporty/zapotrzebowanie_miejsc_2023_2060.xlsx` (zapotre­bowanie miejsc = 100% populacji),
+  - `raporty/prezentacja_demografia_placowki.pptx` (slajdy z wykresami i założeniami).
+- `process_registry.py` – przetwarza wykaz szkół/placówek (`pobrane/Wykaz_szkół_i_placówek_oświatowych_30.09.2024_.xlsx`), filtruje powiat raciborski/miasto Racibórz i zapisuje podsumowania do `raporty/placowki_registry.xlsx`.
 
 - `raporty/raport_finansowy_2024.xlsx` – dane finansowe 2024 (z formułami), w tym koszt_na_ucznia; `Pivot_placowka` + wykresy per placówka.
 - `raporty/uwagi_nieprawidlowosci.docx` – uwagi do sprawozdań (ujemny wynik, inne koszty operacyjne, brak liczby uczniów).
 - `raporty/demografia_dzieci.xlsx` – agregaty dzieci (powiat/gmina) z prognoz GUS.
 - `raporty/zapotrzebowanie_miejsc_2023_2060.xlsx` – zapotrzebowanie na miejsca (żłobek/przedszkole/szkoła) 2023–2060 (powiat) i 2023–2040 (miasto – brak rozbicia 0–2/3–6).
 - `raporty/prezentacja_demografia_placowki.pptx` – slajdy z wykresami demograficznymi.
+- `raporty/placowki_registry.xlsx` – zestawienie placówek z wykazu (powiat/miasto: detale + podsumowania liczby placówek i uczniów wg kategorii).
 - `Rocznik2025/` – rocznik demograficzny 2025 (PDF + tablice).
 
 ## Uwagi analityczne / ograniczenia
