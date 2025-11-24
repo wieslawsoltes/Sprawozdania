@@ -1,0 +1,7 @@
+# Pobierane zasoby binarne / dane wejściowe (składowane w data/)
+data/
+
+# Wirtualne środowiska / cache
+.venv/
+__pycache__/
+.DS_Store
