@@ -1,9 +1,8 @@
-import glob
 import os
 import re
-from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+import unicodedata
 
 import pandas as pd
 import pdfplumber
@@ -13,6 +12,32 @@ from docx import Document
 SPRAWOZDANIA_DIR = Path("pobrane/sprawozdania_2024")
 SUMMARY_XLSX = Path("raporty/raport_finansowy_2024.xlsx")
 ISSUES_DOCX = Path("raporty/uwagi_nieprawidlowosci.docx")
+REGISTRY_FILE = Path("pobrane/Wykaz_szkół_i_placówek_oświatowych_30.09.2024_.xlsx")
+
+POWIAT_FILTER = "raciborsk"
+MIASTO_FILTER = "Racibórz"
+TRANSLIT_MAP = str.maketrans(
+    {
+        "ą": "a",
+        "ć": "c",
+        "ę": "e",
+        "ł": "l",
+        "ń": "n",
+        "ó": "o",
+        "ś": "s",
+        "ź": "z",
+        "ż": "z",
+        "Ą": "a",
+        "Ć": "c",
+        "Ę": "e",
+        "Ł": "l",
+        "Ń": "n",
+        "Ó": "o",
+        "Ś": "s",
+        "Ź": "z",
+        "Ż": "z",
+    }
+)
 
 Number = Optional[float]
 
@@ -101,7 +126,7 @@ def build_summary(rows: List[Dict[str, Optional[float]]]) -> Dict[str, Number]:
     return summary
 
 
-def detect_issues(name: str, summary: Dict[str, Number]) -> List[str]:
+def detect_issues(name: str, summary: Dict[str, Number], student_count: Number) -> List[str]:
     """Zwróć listę uwag dla danej placówki."""
     issues: List[str] = []
     net = summary.get("zysk_strata_netto")
@@ -116,8 +141,8 @@ def detect_issues(name: str, summary: Dict[str, Number]) -> List[str]:
         issues.append("Występują pozostałe koszty operacyjne – warto sprawdzić ich naturę.")
     if summary.get("pozostale_koszty_rodzajowe"):
         issues.append("Odnotowano pozostałe koszty rodzajowe > 0.")
-    # Brak danych o uczniach – zaznaczamy, bo wpływa na koszt/ucznia.
-    issues.append("Brak liczby uczniów/wychowanków w dokumentach – koszt na ucznia nie został policzony.")
+    if student_count is None:
+        issues.append("Brak liczby uczniów/wychowanków – koszt na ucznia nie został policzony.")
     return issues
 
 
@@ -132,35 +157,137 @@ def normalize_name_from_dir(dir_path: str) -> str:
     return name
 
 
+def normalize_ascii(text: str) -> str:
+    """Uprość tekst do ascii/lowercase, usuń nadmiarowe znaki."""
+    if not text:
+        return ""
+    base = text.translate(TRANSLIT_MAP)
+    normalized = unicodedata.normalize("NFKD", base)
+    ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
+    cleaned = re.sub(r"[^0-9A-Za-z]+", " ", ascii_text)
+    return cleaned.strip().lower()
+
+
+def classify_facility_type(name: str) -> str:
+    norm = normalize_ascii(name)
+    if norm.startswith("przedszkole"):
+        return "Przedszkole"
+    if norm.startswith("szkola podstawowa"):
+        return "Szkola podstawowa"
+    if "szkolno przedszkolny" in norm or "szkolno-przedszkolny" in norm or "szkolno rzedszkolny" in norm:
+        return "Zespol szkolno-przedszkolny"
+    if "zlobk" in norm or "zlob" in norm:
+        return "Zlobek / Zespol Zlobkow"
+    return "Inne"
+
+
+def load_registry_index() -> Dict[str, Dict[str, float]]:
+    """Zbuduj słownik liczby uczniów z wykazu (miasto Racibórz)."""
+    base_index: Dict[str, Dict[str, float]] = {"przedszkole": {}, "szkola_podstawowa": {}, "zsp": {}, "zlobek": None}
+    if not REGISTRY_FILE.exists():
+        return base_index
+
+    df = pd.read_excel(REGISTRY_FILE)
+    df = df[df["Powiat"].str.contains(POWIAT_FILTER, case=False, na=False)]
+    df = df[df["Gmina"].str.contains(MIASTO_FILTER, case=False, na=False)]
+    df["norm_name"] = df["Nazwa placówki"].apply(normalize_ascii)
+
+    for _, row in df.iterrows():
+        ucz = row.get("ucz_ogolem")
+        if pd.isna(ucz):
+            continue
+        try:
+            count = int(float(ucz))
+        except (TypeError, ValueError):
+            continue
+        norm = row["norm_name"]
+        if m := re.search(r"przedszkole\s+nr\s*(\d+)", norm):
+            base_index["przedszkole"][m.group(1)] = count
+            continue
+        if m := re.search(r"szkola\s+podstawowa\s+nr\s*(\d+)", norm):
+            base_index["szkola_podstawowa"][m.group(1)] = count
+            continue
+        if m := re.search(r"zespol\s+szkolno[^\d]*nr\s*(\d+)", norm):
+            base_index["zsp"][m.group(1)] = count
+            continue
+        if "zlob" in norm:
+            base_index["zlobek"] = count
+    return base_index
+
+
+def match_student_count(facility_name: str, registry_index: Dict[str, Dict[str, float]]) -> Number:
+    """Znajdź liczbę uczniów dla placówki na podstawie numeru/typu."""
+    norm = normalize_ascii(facility_name)
+    if m := re.search(r"przedszkole\s+nr\s*(\d+)", norm):
+        return registry_index.get("przedszkole", {}).get(m.group(1))
+    if m := re.search(r"szkola\s+podstawowa\s+nr\s*(\d+)", norm):
+        return registry_index.get("szkola_podstawowa", {}).get(m.group(1))
+    if m := re.search(r"zespol\s+szkolno[^\d]*nr\s*(\d+)", norm):
+        return registry_index.get("zsp", {}).get(m.group(1))
+    if "zlob" in norm:
+        return registry_index.get("zlobek")  # type: ignore[index]
+    return None
+
+
+def collect_rzis_files() -> List[str]:
+    """Zbierz ścieżki do RZiS 2024, z fallbackiem do pobrane/."""
+    base_dirs: List[Path] = []
+    if SPRAWOZDANIA_DIR.exists():
+        base_dirs.append(SPRAWOZDANIA_DIR)
+    pobrane_dir = Path("pobrane")
+    if pobrane_dir.exists() and pobrane_dir not in base_dirs:
+        base_dirs.append(pobrane_dir)
+
+    files: List[str] = []
+    seen = set()
+    for base in base_dirs:
+        for pdf_path in base.rglob("*.pdf"):
+            lower = pdf_path.name.lower()
+            if "rachunek" in lower and "2024" in lower:
+                resolved = pdf_path.resolve()
+                if resolved in seen:
+                    continue
+                seen.add(resolved)
+                files.append(str(pdf_path))
+    files.sort()
+    if not files:
+        raise SystemExit("Nie znaleziono plików Rachunek*.pdf w podkatalogach pobrane.")
+    return files
+
+
 def main():
     report_rows = []
     per_facility_tables: Dict[str, pd.DataFrame] = {}
     issues: Dict[str, List[str]] = {}
 
-    rzis_files: List[str] = []
-    # szukamy wszystkich rachunków zysków i strat 2024 (różne warianty nazw/majuskuły)
-    for pdf_path in SPRAWOZDANIA_DIR.rglob("*.pdf"):
-        lower = pdf_path.name.lower()
-        if "rachunek" in lower and "2024" in lower:
-            rzis_files.append(str(pdf_path))
-    rzis_files.sort()
-    if not rzis_files:
-        raise SystemExit("Nie znaleziono plików Rachunek*.pdf w podkatalogach.")
+    registry_index = load_registry_index()
+    rzis_files = collect_rzis_files()
 
     for pdf_path in rzis_files:
         facility_dir = os.path.dirname(pdf_path)
         facility_name = normalize_name_from_dir(facility_dir)
+        facility_type = classify_facility_type(facility_name)
+        student_count = match_student_count(facility_name, registry_index)
         rows = parse_rzis_pdf(pdf_path)
         summary = build_summary(rows)
+        summary["liczba_uczniow"] = student_count
+        summary["typ"] = facility_type
+        costs = summary.get("koszty_operacyjne")
+        if student_count is not None and student_count != 0 and costs is not None:
+            summary["koszt_na_ucznia"] = costs / student_count
+        else:
+            summary["koszt_na_ucznia"] = None
+
         report_rows.append({"placowka": facility_name, **summary})
         per_facility_tables[facility_name] = pd.DataFrame(rows)
-        issues[facility_name] = detect_issues(facility_name, summary)
+        issues[facility_name] = detect_issues(facility_name, summary, student_count)
 
     # DataFrame zbiorczy
     summary_df = pd.DataFrame(report_rows)
     # Kolejność kolumn dla czytelności
     ordered_cols = [
         "placowka",
+        "typ",
         "przychody_netto",
         "dotacje_podstawowe",
         "przychody_budzetowe",
@@ -175,12 +302,11 @@ def main():
         "pozostale_przychody_operacyjne",
         "pozostale_koszty_operacyjne",
         "zysk_strata_netto",
+        "liczba_uczniow",
+        "koszt_na_ucznia",
     ]
     summary_df = summary_df[ordered_cols]
     summary_df.sort_values("placowka", inplace=True)
-
-    # Koszt na ucznia – brak danych, zostawiamy NaN i opisujemy w raporcie
-    summary_df["koszt_na_ucznia"] = pd.NA
 
     # Eksport do Excela: arkusz zbiorczy + arkusze placówek
     with pd.ExcelWriter(SUMMARY_XLSX, engine="openpyxl") as writer:
